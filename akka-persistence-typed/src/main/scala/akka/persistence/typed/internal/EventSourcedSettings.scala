@@ -11,6 +11,7 @@ import scala.concurrent.duration._
 import akka.actor.typed.ActorSystem
 import akka.annotation.InternalApi
 import akka.persistence.Persistence
+import akka.persistence.Persistence.verifyPluginConfigIsDefined
 import com.typesafe.config.Config
 
 /**
@@ -40,7 +41,7 @@ import com.typesafe.config.Config
     val recoveryEventTimeout: FiniteDuration =
       journalConfig.getDuration("recovery-event-timeout", TimeUnit.MILLISECONDS).millis
 
-    verifySnapshotConfig(config, snapshotPluginId)
+    Persistence.verifyPluginConfigExists(config, snapshotPluginId, "Snapshot store")
 
     EventSourcedSettings(
       stashCapacity = stashCapacity,
@@ -52,22 +53,15 @@ import com.typesafe.config.Config
   }
 
   private def journalConfigFor(config: Config, journalPluginId: String): Config = {
-    def defaultJournalPluginId = config.getString("akka.persistence.journal.plugin") match {
-      case "" =>
-        throw new IllegalArgumentException(
-          s"Default journal plugin is not configured, " +
-          "see 'akka.persistence.journal.plugin' in reference.conf.")
-      case pluginId => pluginId
+    def defaultJournalPluginId = {
+      val configPath = config.getString("akka.persistence.journal.plugin")
+      Persistence.verifyPluginConfigIsDefined(configPath, "Default journal")
+      configPath
     }
-    val configPath = if (journalPluginId == "") defaultJournalPluginId else journalPluginId
-    if (!config.hasPath(configPath))
-      throw new IllegalArgumentException(s"Journal plugin [$configPath] is not configured.")
-    config.getConfig(configPath).withFallback(config.getConfig(Persistence.JournalFallbackConfigPath))
-  }
 
-  private def verifySnapshotConfig(config: Config, snapshotPluginId: String): Unit = {
-    if (snapshotPluginId != "" && !config.hasPath(snapshotPluginId))
-      throw new IllegalArgumentException(s"Snapshot store plugin [$snapshotPluginId] is not configured.")
+    val configPath = if (journalPluginId == "") defaultJournalPluginId else journalPluginId
+    Persistence.verifyPluginConfigExists(config, configPath, "Journal")
+    config.getConfig(configPath).withFallback(config.getConfig(Persistence.JournalFallbackConfigPath))
   }
 
 }

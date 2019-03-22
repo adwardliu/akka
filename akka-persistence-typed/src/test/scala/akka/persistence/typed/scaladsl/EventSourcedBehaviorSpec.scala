@@ -884,12 +884,13 @@ class EventSourcedBehaviorSpec extends ScalaTestWithActorTestKit(EventSourcedBeh
           akka.loggers = [akka.testkit.TestEventListener]
           """))
       try {
-        EventFilter[ActorInitializationException](start = "Journal plugin [missing] is not configured", occurrences = 1)
-          .intercept {
-            val ref = testkit2.spawn(Behaviors.setup[Command](counter(_, nextPid()).withJournalPluginId("missing")))
-            val probe = testkit2.createTestProbe()
-            probe.expectTerminated(ref)
-          }(testkit2.system.toUntyped)
+        EventFilter[ActorInitializationException](
+          start = "Journal plugin [missing] configuration doesn't exist",
+          occurrences = 1).intercept {
+          val ref = testkit2.spawn(Behaviors.setup[Command](counter(_, nextPid()).withJournalPluginId("missing")))
+          val probe = testkit2.createTestProbe()
+          probe.expectTerminated(ref)
+        }(testkit2.system.toUntyped)
       } finally {
         testkit2.shutdownTestKit()
       }
@@ -930,7 +931,7 @@ class EventSourcedBehaviorSpec extends ScalaTestWithActorTestKit(EventSourcedBeh
           """))
       try {
         EventFilter[ActorInitializationException](
-          start = "Snapshot store plugin [missing] is not configured",
+          start = "Snapshot store plugin [missing] configuration doesn't exist",
           occurrences = 1).intercept {
           val ref = testkit2.spawn(Behaviors.setup[Command](counter(_, nextPid()).withSnapshotPluginId("missing")))
           val probe = testkit2.createTestProbe()
